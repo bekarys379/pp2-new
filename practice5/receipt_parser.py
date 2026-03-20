@@ -29,7 +29,7 @@ print(4., x3.group())
 print()
 
 #5
-x4=re.search(r"[a.*b]", content)
+x4=re.search(r"a.*b", content)
 print(5., x4.group())
 print()
 
