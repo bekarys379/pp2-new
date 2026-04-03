@@ -1,6 +1,8 @@
 import psycopg2
 import csv
 from config import DB_config
+import functions
+import procedures
 
 
 def create_table():
@@ -11,7 +13,7 @@ def create_table():
                     CREATE TABLE IF NOT EXISTS phonebook (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(200),
-                    number VARCHAR(200) UNIQUE
+                    phone VARCHAR(200) UNIQUE
                     );
                     """)
                     conn.commit()
@@ -29,8 +31,8 @@ def insert_from_csv(file_path):
                     for row in rows:
                         try:
                             cursor.execute(
-                                "INSERT INTO phonebook (name, number) VALUES (%s, %s);",
-                                (row['name'], row['number'])
+                                "INSERT INTO phonebook (name, phone) VALUES (%s, %s);",
+                                (row['name'], row['phone'])
                             )
                         except Exception as e:
                             print(f"Error inserting {row['name']}:{e}")
@@ -44,11 +46,11 @@ def insert_from_csv(file_path):
 
 def insert_from_console():
     iname=input("Enter name:")
-    inumber=input("Enter number:")
+    inumber=input("Enter phone:")
     try:
         with psycopg2.connect(**DB_config) as conn:
             with conn.cursor() as cursor:
-                cursor.execute("INSERT INTO phonebook (name, number) VALUES (%s, %s);", (iname, inumber))
+                cursor.execute("INSERT INTO phonebook (name, phone) VALUES (%s, %s);", (iname, inumber))
             conn.commit()
         print("Contact added succesfully")
     except Exception as e:
@@ -58,9 +60,9 @@ def insert_from_console():
 #Implement updating a contact's first name or phone number
 
 def update_contact():
-    number = input("Enter the phone number of the contact to update: ")
+    phone = input("Enter the phone of the contact to update: ")
     print("1. Update name")
-    print("2. Update number")
+    print("2. Update phone")
     choice = input("Choose option: ")
 
     try:
@@ -68,7 +70,10 @@ def update_contact():
             with conn.cursor() as cursor:
                 if choice=="1":
                     new_name=input("Enter new name")
-                    cursor.execute("UPDATE phonebook SET name=%s WHERE number=%s;", (new_name, number))
+                    cursor.execute("UPDATE phonebook SET name=%s WHERE phone=%s;", (new_name, phone))
+                elif choice == "2":
+                    new_phone = input("Enter new phone: ")
+                    cursor.execute("UPDATE phonebook SET phone=%s WHERE phone=%s;", (new_phone, phone))
             conn.commit()
         print("Update added succesfully")
     except Exception as e:
@@ -80,7 +85,7 @@ def update_contact():
 
 def query_contacts():
     print("1. By name")
-    print("2. By number prefix")
+    print("2. By phone prefix")
     choice = str(input("Choose filter: "))
 
     try:
@@ -91,7 +96,7 @@ def query_contacts():
                     cursor.execute("SELECT * FROM phonebook WHERE name ILIKE %s;", (f"%{name}%",))
                 elif choice=="2":
                     prefix=input("Enter prefix")
-                    cursor.execute("SELECT * FROM phonebook WHERE name LIKE %s;", (f"{prefix}%",))
+                    cursor.execute("SELECT * FROM phonebook WHERE phone LIKE %s;", (f"{prefix}%",))
                 results=cursor.fetchall()
                 if results:
                     for r in results:
@@ -108,7 +113,7 @@ def query_contacts():
 
 def delete_contact():
     print("1. By username")
-    print("2. By number")
+    print("2. By phone")
     choice=str(input())
     try:
         with psycopg2.connect(**DB_config) as conn:
@@ -117,12 +122,80 @@ def delete_contact():
                     name=input("Enter username")
                     cursor.execute("DELETE FROM phonebook WHERE name=%s;", (name,))
                 elif choice=="2":
-                    number=input("Enter the number")
-                    cursor.execute("DELETE FROM phonebook WHERE number=%s;", (number,))
+                    phone=input("Enter the phone")
+                    cursor.execute("DELETE FROM phonebook WHERE phone=%s;", (phone,))
             conn.commit()
         print("Deletion was succesfull")
     except Exception as e:
         print(f"Database error:{e}")
+
+#updated part starts here
+def matching_patterns():
+    pattern=input("Enter your pattern:")
+    try:
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM matching_patterns(%s)", (pattern,))
+                results=cursor.fetchall()
+                for r in results:
+                    print(r)
+            conn.commit()
+    except Exception as e:
+        print(e)
+
+
+def pagination():
+    limits=int(input("Enter your limit:"))
+    offset=int(input("Enter  your offset:"))
+    try:
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM pagination(%s, %s)", (limits, offset))
+                rows=cursor.fetchall()
+                for row in rows:
+                    print(row)
+            conn.commit()
+    except Exception as e:
+        print(e)
+
+
+def insertion():
+    name=input("Enter the name:")
+    phone=input("Enter the phone:")
+    try:
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("CALL insert_user(%s, %s)", (name, phone))
+            conn.commit()
+            print(f"{name} inserted/updated successfully.")
+    except Exception as e:
+        print(e)
+
+
+def upsert_multiple_contacts():
+    names=input("Enter the names")
+    phones=input("Enter the numbers")
+    try:
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("CALL insert_many_users(%s, %s)", (names, phones))
+            conn.commit()
+            print("Insertion was successful!")
+    except Exception as e:
+        print(e)
+
+
+def deleting_procedure():
+    name=input("Enter the name:")
+    phone=input("Enter the phone:")
+    try:
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("CALL delete_data(%s, %s)", (name, phone))
+            conn.commit()
+            print("Deletion was successful")
+    except Exception as e:
+        print(e)
 
 
 
@@ -135,7 +208,12 @@ def menu():
         print("3. Update Contact")
         print("4. Query Contacts")
         print("5. Delete Contact")
-        print("6. Exit")
+        print("6. Find by pattern")
+        print("7. Paginate")
+        print("8. Insertion ")
+        print("9. Upsert multiple users")
+        print("10. Deleting procedure")
+        print("11. Exit")
 
         choice = input("Choose an option: ")
         if choice == "1":
@@ -150,6 +228,16 @@ def menu():
         elif choice == "5":
             delete_contact()
         elif choice == "6":
+            matching_patterns()
+        elif choice == "7":
+            pagination()
+        elif choice == "8":
+            insertion()
+        elif choice == "9":
+            upsert_multiple_contacts()
+        elif choice == "10":
+            deleting_procedure()
+        elif choice == "11":
             print("Leaving...")
             break
         else:
