@@ -171,11 +171,15 @@ def insertion():
 
 
 def upsert_multiple_contacts():
-    names=input("Enter the names").split(",")
-    phones=input("Enter the numbers").split(",")
+    names=input("Enter the names:").split(",")
+    phones=input("Enter the numbers:").split(",")
 
     names = [n.strip() for n in names]
     phones = [p.strip() for p in phones]
+
+    print(names, type(names)) 
+    print(phones, type(phones)) 
+
     try:
         with psycopg2.connect(**DB_config) as conn:
             with conn.cursor() as cursor:
