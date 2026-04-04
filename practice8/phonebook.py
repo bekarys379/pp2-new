@@ -1,8 +1,6 @@
 import psycopg2
 import csv
 from config import DB_config
-import functions
-import procedures
 
 
 def create_table():
@@ -173,8 +171,11 @@ def insertion():
 
 
 def upsert_multiple_contacts():
-    names=input("Enter the names")
-    phones=input("Enter the numbers")
+    names=input("Enter the names").split(",")
+    phones=input("Enter the numbers").split(",")
+
+    names = [n.strip() for n in names]
+    phones = [p.strip() for p in phones]
     try:
         with psycopg2.connect(**DB_config) as conn:
             with conn.cursor() as cursor:
