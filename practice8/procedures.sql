@@ -27,7 +27,7 @@ DECLARE
     invalid_contacts TEXT := '';
 BEGIN
     FOR i IN 1..array_length(p_names, 1) LOOP
-        -- Correct variable name: p_phones[i], not phones[i]
+        
         IF p_phones[i] ~ '^\d{11}$' THEN
             CALL insert_user(p_names[i], p_phones[i]);
         ELSE
