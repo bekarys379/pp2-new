@@ -16,9 +16,9 @@ CREATE OR REPLACE FUNCTION pagination(p_limits INT, p_offset INT)
 RETURNS TABLE(name VARCHAR, phone VARCHAR) AS $$
 BEGIN
     RETURN QUERY
-    SELECT name, phone
+    SELECT phonebook.name, phonebook.phone
     FROM phonebook
-    ORDER BY name
+    ORDER BY phonebook.name
     LIMIT p_limits OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;
