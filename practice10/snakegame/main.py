@@ -1,5 +1,6 @@
 import pygame, sys
 import random
+import time
 
 pygame.init()
 
@@ -61,11 +62,14 @@ class Snake:
 
 
 class Food:
-    def __init__(self, width, height, cell, snake):
+    def __init__(self, width, height, cell, snake, lifespan=5):
         self.width = width
         self.height = height
         self.cell = cell
         self.snake = snake
+        self.type="normal"
+        self.lifespan=lifespan
+        self.spawn_time=time.time()
         self.respawn()
 
     def respawn(self):
@@ -76,7 +80,12 @@ class Food:
             )
             if pos not in self.snake.body:
                 self.position = pos
+                self.spawn_time = time.time()
+                self.type = random.choice(["normal", "strong"])
                 break
+
+    def times_up(self):
+        return time.time()-self.spawn_time>self.lifespan
 
 
 
@@ -106,18 +115,24 @@ while running:
 
     snake.move()
 
-    if snake.body[0] == food.position:
+    if food.times_up():
         food.respawn()
-        snake.grow_next = True
-        score += 1
 
-    level = score // fpl + 1
-    if level != last_level:
-        speed += 2
-        last_level = level
+    if snake.body[0]==food.position:
+        food.respawn()
+        snake.grow_next=True
+        score+=1
+        if food.type=="strong":
+            score+=1
+            snake.grow_next=True
+
+    level=score//fpl+1
+    if level!=last_level:
+        speed+=2
+        last_level=level
 
     if snake.checkcollision(WIDTH, HEIGHT):
-        running = False
+        running=False
 
     # DRAW
     screen.fill(BLACK)
