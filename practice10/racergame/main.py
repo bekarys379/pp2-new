@@ -142,12 +142,12 @@ while running:
         if hit.type == "silver":
             NCOINS += 1
 
+        elif hit.type == "poison":
+            NCOINS -= 1
 
         elif hit.type == "gold":
             NCOINS += 3
 
-        elif hit.type == "poison":
-            NCOINS -= 1
         new_c = Coins()
         coins.add(new_c)
         all_sprites.add(new_c)
