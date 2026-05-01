@@ -1,3 +1,4 @@
+import json
 import pygame, sys
 from pygame.locals import *
 import random, time
@@ -30,7 +31,6 @@ screen.fill(WHITE)
 bg = pygame.image.load("roadbg.png")
 bg = pygame.transform.scale(bg, (800, 600))
 bg_y = 0
-
 clock = pygame.time.Clock()
 FPS = 60
 
@@ -179,6 +179,37 @@ coin_timer = 0
 obstacle_timer = 0
 boost_timer = 300
 
+def load_scores():
+    try:
+        with open("scores.json", "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+
+def save_score(score):
+    data = load_scores()
+    data.append(score)
+    data = sorted(data, reverse=True)[:10]
+    with open("scores.json", "w") as f:
+        json.dump(data, f)
+
+
+def show_leaderboard():
+    screen.fill(WHITE)
+    font = pygame.font.SysFont("Verdana", 30)
+
+    scores = load_scores()
+
+    y = 100
+    for i, s in enumerate(scores):
+        text = font.render(f"{i+1}. Score: {s}", True, BLACK)
+        screen.blit(text, (250, y))
+        y += 40
+
+    pygame.display.update()
+    time.sleep(5)
+
 
 # ================= GAME LOOP =================
 while running:
@@ -265,11 +296,15 @@ while running:
         if shield_active:
             hit_enemy.kill()
         else:
+            print("SAVING SCORE:", SCORE)
             pygame.mixer.Sound('crash.wav').play()
             time.sleep(0.5)
+  
+            save_score(SCORE)
             screen.fill(RED)
             screen.blit(game_over, (30, 250))
             pygame.display.update()
+            show_leaderboard() 
             time.sleep(2)
             pygame.quit()
             sys.exit()
@@ -281,6 +316,6 @@ while running:
         enemies.add(new_enemy)
         all_sprites.add(new_enemy)
         enemy_timer = max(20, 80 - level * 5)
-
+    
     pygame.display.flip()
     clock.tick(FPS)

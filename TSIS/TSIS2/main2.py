@@ -120,6 +120,8 @@ while running:
             elif event.pos[0] > SIDEBAR_WIDTH:
                 drawing = True
                 start_pos = get_canvas_pos(event.pos)
+                if tool == "pencil":
+                    last_pencil_pos = start_pos
 
     
         if event.type == pygame.MOUSEBUTTONUP:

@@ -439,7 +439,7 @@ def sort_contacts():
     try:
         with psycopg2.connect(**DB_config) as conn:
             with conn.cursor() as cursor:
-                cursor.execute(f"""SELECT * FROM phonebook ORDER BY {order}""")
+                cursor.execute(f"""SELECT * FROM contacts ORDER BY {order}""")
                 rows = cursor.fetchall()
                 for row in rows:
                     print(row)
