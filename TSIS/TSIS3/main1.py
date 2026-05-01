@@ -2,7 +2,7 @@ import json
 import pygame, sys
 from pygame.locals import *
 import random, time
-PLAYER_NAME = input("Enter name: ")
+
 pygame.init()
 
 BLUE =(0, 0, 255)
@@ -17,7 +17,6 @@ SCORE = 0
 NCOINS = 0
 DG = 0
 timer = 0
-DISTANCE=0
 
 shield_active = False
 shield_timer = 0
@@ -79,6 +78,8 @@ class Player(pygame.sprite.Sprite):
             self.rect.move_ip(-5, 0)
         if self.rect.right < 800 and pressed_keys[K_RIGHT]:
             self.rect.move_ip(5, 0)
+
+        # ❌ removed auto movement (was breaking control)
 
 
 # ================= COINS =================
@@ -186,16 +187,26 @@ def load_scores():
         return []
 
 
-def save_score(name, score, distance):
+def save_score(score):
+    data = load_scores()
+    data.append(score)
+    data = sorted(data, reverse=True)[:10]
+    with open("scores.json", "w") as f:
+        json.dump(data, f)
+
+def load_scores():
+    try:
+        with open("scores.json", "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_score(score):
     data = load_scores()
 
-    data.append({
-        "name": name,
-        "score": score,
-        "distance": distance
-    })
+    data.append(score)
 
-    data = sorted(data, key=lambda x: x["score"], reverse=True)[:10]
+    data = sorted(data, reverse=True)[:10]
 
     with open("scores.json", "w") as f:
         json.dump(data, f)
@@ -207,18 +218,10 @@ def show_leaderboard():
 
     scores = load_scores()
 
-    title = font.render("TOP 10", True, BLACK)
-    screen.blit(title, (330, 40))
-
-    y = 120
-
-    for i, entry in enumerate(scores):
-        text = font.render(
-            f"{i+1}. {entry['name']} | {entry['score']} | {entry['distance']}",
-            True,
-            BLACK
-        )
-        screen.blit(text, (200, y))
+    y = 100
+    for i, s in enumerate(scores):
+        text = font.render(f"{i+1}. Score: {s}", True, BLACK)
+        screen.blit(text, (250, y))
         y += 40
 
     pygame.display.update()
@@ -245,9 +248,6 @@ while running:
     bg_y += SPEED / 2
     if bg_y >= 600:
         bg_y -= 600
-
-
-    DISTANCE += SPEED
 
     # FIXED: separate movement
     for entity in all_sprites:
@@ -315,12 +315,12 @@ while running:
         else:
             pygame.mixer.Sound('crash.wav').play()
             time.sleep(0.5)
-            save_score(PLAYER_NAME, SCORE, DISTANCE)
+            save_score(SCORE)
             screen.fill(RED)
             screen.blit(game_over, (30, 250))
             pygame.display.update()
             show_leaderboard()
-            pygame.time.delay(2000)
+            time.sleep(2)
             pygame.quit()
             sys.exit()
 
