@@ -2,7 +2,7 @@ import json
 import pygame, sys
 from pygame.locals import *
 import random, time
-PLAYER_NAME = input("Enter name: ")
+
 pygame.init()
 
 BLUE =(0, 0, 255)
