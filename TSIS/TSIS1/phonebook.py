@@ -19,7 +19,8 @@ def create_table():
 
 
 
-def insert_from_csv(file_path):
+def insert_from_csv():
+    file_path=input("Enter your file path")
     try:
         with psycopg2.connect(**DB_config) as conn:
             with conn.cursor() as cursor:
@@ -258,8 +259,6 @@ def matching_patterns():
         print(e)
 
 
-
-
 def pagination():
     limits=int(input("Enter your limit:"))
     offset=int(input("Enter your offset:"))
@@ -272,7 +271,6 @@ def pagination():
                 conn.commit() 
     except Exception as e:
         print(e)
-
 
 
 def insertion():
@@ -311,8 +309,6 @@ def insertion():
 
     except Exception as e:
         print(e)
-
-
 
 
 def upsert_multiple_contacts():
@@ -446,137 +442,126 @@ def sort_contacts():
     except Exception as e:
         print(e)
 
+def export_to_json():
+    file_path = input("Enter your file path: ")
 
-def export_to_json(file_path="contacts.json"):
     try:
-        conn = get_connection()
-        if conn is None:
-            return
-
-        with conn.cursor() as cursor:
-
-            cursor.execute("""
-                SELECT c.id, c.name, c.email, c.birthday,
-                       g.name AS group_name
-                FROM contacts c
-                LEFT JOIN groups g ON c.group_id = g.id;
-            """)
-
-            contacts = cursor.fetchall()
-
-            result = []
-
-            for c in contacts:
-                contact_id = c[0]
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
 
                 cursor.execute("""
-                    SELECT phone, type
-                    FROM phones
-                    WHERE contact_id = %s;
-                """, (contact_id,))
+                    SELECT c.id, c.name, c.email, c.birthday,
+                           g.name AS group_name
+                    FROM contacts c
+                    LEFT JOIN groups g ON c.group_id = g.id;
+                """)
 
-                phones = cursor.fetchall()
+                contacts = cursor.fetchall()
 
-                result.append({
-                    "id": c[0],
-                    "name": c[1],
-                    "email": c[2],
-                    "birthday": str(c[3]) if c[3] else None,
-                    "group": c[4],
-                    "phones": [
-                        {"phone": p[0], "type": p[1]} for p in phones
-                    ]
-                })
+                result = []
 
-        conn.close()
+                for c in contacts:
+                    contact_id = c[0]
+
+                    cursor.execute("""
+                        SELECT phone, type
+                        FROM phones
+                        WHERE contact_id = %s;
+                    """, (contact_id,))
+
+                    phones = cursor.fetchall()
+
+                    result.append({
+                        "id": c[0],
+                        "name": c[1],
+                        "email": c[2],
+                        "birthday": str(c[3]) if c[3] else None,
+                        "group": c[4],
+                        "phones": [
+                            {"phone": p[0], "type": p[1]} for p in phones
+                        ]
+                    })
 
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=4)
+            json.dump(result, f, indent=4, ensure_ascii=False)
 
         print("Exported to JSON successfully")
 
     except Exception as e:
-        print(e)
+        print("Database error:", e)
 
+def import_from_json():
+    file_path = input("Enter JSON file path: ")
 
-def import_from_json(file_path="contacts.json"):
     try:
-        conn = get_connection()
-        if conn is None:
-            return
+        with psycopg2.connect(**DB_config) as conn:
+            with conn.cursor() as cursor:
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
 
-        with conn.cursor() as cursor:
+                for item in data:
 
-            for item in data:
-
-                # check duplicate
-                cursor.execute("""
-                    SELECT id FROM contacts WHERE name = %s;
-                """, (item["name"],))
-
-                existing = cursor.fetchone()
-
-                if existing:
-                    choice = input(
-                        f"{item['name']} exists. skip/overwrite? "
-                    )
-
-                    if choice.lower() == "skip":
-                        continue
-
-                    contact_id = existing[0]
-
-                    # overwrite main info
                     cursor.execute("""
-                        UPDATE contacts
-                        SET email=%s, birthday=%s
-                        WHERE id=%s;
-                    """, (
-                        item["email"],
-                        item["birthday"],
-                        contact_id
-                    ))
+                        SELECT id FROM contacts WHERE name = %s;
+                    """, (item["name"],))
 
-                    # delete old phones
-                    cursor.execute("""
-                        DELETE FROM phones WHERE contact_id=%s;
-                    """, (contact_id,))
+                    existing = cursor.fetchone()
+                    contact_id = None
 
-                else:
-                    cursor.execute("""
-                        INSERT INTO contacts (name, email, birthday, group_id)
-                        VALUES (%s, %s, %s, %s)
-                        RETURNING id;
-                    """, (
-                        item["name"],
-                        item["email"],
-                        item["birthday"],
-                        None
-                    ))
+                    if existing:
+                        choice = input(f"{item['name']} exists. skip/overwrite? ")
 
-                    contact_id = cursor.fetchone()[0]
+                        if choice.lower() == "skip":
+                            continue
 
-                # insert phones
-                for p in item.get("phones", []):
-                    cursor.execute("""
-                        INSERT INTO phones (contact_id, phone, type)
-                        VALUES (%s, %s, %s);
-                    """, (
-                        contact_id,
-                        p["phone"],
-                        p.get("type", "mobile")
-                    ))
+                        contact_id = existing[0]
 
-        conn.commit()
-        conn.close()
+                        # overwrite main info
+                        cursor.execute("""
+                            UPDATE contacts
+                            SET email=%s, birthday=%s
+                            WHERE id=%s;
+                        """, (
+                            item["email"],
+                            item["birthday"],
+                            contact_id
+                        ))
+
+                        # delete old phones
+                        cursor.execute("""
+                            DELETE FROM phones WHERE contact_id=%s;
+                        """, (contact_id,))
+
+                    else:
+                        cursor.execute("""
+                            INSERT INTO contacts (name, email, birthday, group_id)
+                            VALUES (%s, %s, %s, %s)
+                            RETURNING id;
+                        """, (
+                            item["name"],
+                            item["email"],
+                            item["birthday"],
+                            None
+                        ))
+
+                        contact_id = cursor.fetchone()[0]
+
+                    # insert phones
+                    for p in item.get("phones", []):
+                        cursor.execute("""
+                            INSERT INTO phones (contact_id, phone, type)
+                            VALUES (%s, %s, %s);
+                        """, (
+                            contact_id,
+                            p["phone"],
+                            p.get("type", "mobile")
+                        ))
 
         print("JSON import completed")
 
     except Exception as e:
-        print(e)
+        print("Database error:", e)
 
 def test_add_phone():
     name = input("Contact name: ")
@@ -614,7 +599,12 @@ def menu():
         print("11. Filter by group")        # NEW
         print("12. Search by email")       # NEW
         print("13. Sort contacts")          # NEW
-        print("14. Exit")
+        print("14. Export to Json")
+        print("15. Import from Json")
+        print("16. Test add phone")
+        print("17. Move to group")
+        print("18. Test search")
+        print("19. Exit")
 
         choice = input("Choose an option: ")
         if choice == "1":
@@ -644,7 +634,17 @@ def menu():
             search_by_email()
         elif choice == "13":
             sort_contacts()
-        elif choice == "14":
+        elif choice== "14":
+            export_to_json()
+        elif choice=="15":
+            import_from_json()
+        elif choice=="16":
+            test_add_phone()
+        elif choice=="17":
+            move_to_group()
+        elif choice=="18":
+            test_search()
+        elif choice == "19":
             print("Leaving...")
             break
         else:
